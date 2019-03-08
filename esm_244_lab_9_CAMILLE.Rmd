@@ -1,0 +1,345 @@
+---
+title: "ESM 244 Lab"
+author: "Camille Herrera"
+date: "March 7, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+
+library(beepr) # beep (on CRAN)
+library(datapasta) # copy/paste (on CRAN)
+library(tidyverse) 
+library(igraph) # network stuff (on CRAN)
+library(multiplex) # network stuff (on CRAN)
+library(ggraph) # More graph stuff (on CRAN)
+library(gt) # tables (get development version!!!)
+# remotes::install_github("rstudio/gt")
+library(ggalluvial) # Sankeys (on CRAN)
+library(readxl) # Get .xls (on CRAN)
+library(praise) # Get/share praise! 
+
+# Note: may need to update dependencies (I usually choose yes to all...)
+
+
+```
+
+###Part 1. Network analysis example (Les Miserables character connections)
+
+Get the data
+```{r}
+
+# Stored as a .gml file (graph modeling language) format supports network data
+# Use multiplex::read.gml()
+
+lm_df <- read.gml("lesmis.gml")
+
+# Convert to graph (igraph) with nodes & edges
+les_mis <- graph_from_data_frame(lm_df, directed = FALSE) # means no direction in graph theory we are using
+beep(sound = 8) # ?beep to see options but don't pipe into the beep sound, otherwise it will store i as an audio object
+praise()
+
+```
+
+Find some quantiative metrics of graph (as in graph theory):
+
+```{r}
+#graph diameter:
+diameter(les_mis)
+
+farthest_vertices(les_mis)
+
+```
+
+Plot:
+```{r}
+
+plot(les_mis)
+
+plot(les_mis, vertex.color = "orange",
+     vertex.size = 5,
+     vertex.label.cex = 0.5)
+
+```
+
+A little more customized graphs using gg formats:
+```{r}
+
+ggraph(les_mis, layout = "kk") + #equivalent of ggplot = 
+  geom_edge_link()
+
+ggraph(les_mis, layout = "kk") + #equivalent of ggplot = 
+  geom_edge_link() +
+  geom_node_text(aes(label = name), size = 2, color = "white") +
+  theme_dark()
+
+ggraph(les_mis, layout = "linear") +
+  geom_edge_arc(alpha = 0.8) +
+  geom_node_text(aes(label = name), angle = 90, size = 2, hjust = 1) +
+  theme_graph()
+
+ggraph(les_mis, layout = "tree") +
+  geom_edge_fan(color = "red") +
+  geom_node_text(aes(label = name), size = 2, color = "blue", angle = 45) +
+  theme_void()
+beep(3)
+
+```
+
+Or the ones that we're most used to seeing:
+```{r}
+
+ggraph(les_mis, layout = "linear", circular = TRUE) +
+  geom_edge_arc(alpha = 0.5)
+
+ggraph(les_mis, layout = "linear", circular = TRUE) +
+  geom_edge_arc(alpha = 0.5) +
+  geom_node_point(aes(color = name), show.legend = FALSE) +
+  geom_node_text(aes(label = name), size = 3,  hjust = "outward") +
+  theme_void()
+
+# can show hieracharial clusters using graph theory
+# can be these are two variables that have a correction greater than 0.8, can use what we did with matrices in an earlier lab
+
+```
+
+###Part 2. Sankey diagrams
+
+- alluvial #similar syntax to ggplot
+- ggalluvial
+- NetworkD3
+- ggforce
+
+```{r}
+
+sdf <- read_csv("sankey_df.csv") %>% 
+  select(-X1)
+
+```
+
+```{r}
+
+ggplot(sdf, aes(y = weight, axis1 = before, axis2 = after)) +
+  geom_alluvium(aes(fill = before, color = before), show.legend = FALSE)
+
+ggplot(sdf, aes(y = weight, axis1 = before, axis2 = after)) +
+  geom_alluvium(aes(fill = before, color = before), show.legend = FALSE) +
+  geom_stratum(width = 1/5, color = "gray") + #what proportion of the graph will this be in
+  geom_text(stat = "stratum", label.strata = TRUE) 
+
+ggplot(sdf, aes(y = weight, axis1 = before, axis2 = after)) +
+  geom_alluvium(aes(fill = before, color = before), show.legend = FALSE) +
+  geom_stratum(width = 1/5, color = "gray") + 
+  geom_text(stat = "stratum", label.strata = TRUE) +
+  scale_fill_manual(values = c("purple", "blue", "green")) +
+  scale_color_manual(values = c("purple", "blue", "green"))
+
+ggplot(sdf, aes(y = weight, axis1 = before, axis2 = after)) +
+  geom_alluvium(aes(fill = before, color = before), show.legend = FALSE) +
+  geom_stratum(width = 1/5, color = "gray") + 
+  geom_text(stat = "stratum", label.strata = TRUE) +
+  scale_fill_manual(values = c("purple", "blue", "green")) +
+  scale_color_manual(values = c("purple", "blue", "green")) +
+  scale_x_discrete(limits = c("Before", "After"), expand = c(0,0)) + # how to get rid of areas below 0,0 axes
+  theme_void()
+
+```
+
+###Part 3. Creating your own tibbles
+
+tibbles are dfs that have some extra functionality compared to what used to be called dataframes
+tibble and df used interchangably in real world
+good to have tiny ddf to try code on
+```{r}
+
+my_tibble <- tribble(
+  ~camille, ~made, ~this, ~awesomething,
+  1, "yes", 0, 10000,
+  2, "no", 4, 50000,
+  3, "maybe", 10, 40000,
+  4, "yes", 9, 15000
+)
+beep(2)
+
+# can recreate a reproducible example
+
+```
+
+Check out Jenny Bryan's awesome package 'reprex' - incentivizes people to make little stand-alone code that people are having problems with can run and share to get help (like overstack or R Studio Community)
+
+###3b. datapasta
+
+Can I copy and paste data from outside sourcees and have R store it as a df or tibble?
+
+
+```{r}
+
+weather_data <- tibble::tribble(
+                                                     ~X,          ~Location, ~Min, ~Max,
+                                       "Partly cloudy.",         "Brisbane",   19,   29,
+                                       "Partly cloudy.", "Brisbane Airport",   18,   27,
+                                     "Possible shower.",       "Beaudesert",   15,   30,
+                                       "Partly cloudy.",        "Chermside",   17,   29,
+                       "Shower or two. Possible storm.",           "Gatton",   15,   32,
+                                     "Possible shower.",          "Ipswich",   15,   30,
+                                       "Partly cloudy.",    "Logan Central",   18,   29,
+                                        "Mostly sunny.",            "Manly",   20,   26,
+                                       "Partly cloudy.",    "Mount Gravatt",   17,   28,
+                                     "Possible shower.",            "Oxley",   17,   30,
+                                       "Partly cloudy.",        "Redcliffe",   19,   27
+                       )
+
+weather_data <- rename(weather_data, Condition = X)
+
+# create shortcuts > Tools > Addins > Browse Addins > Keyboard shortcuts
+camille_tries_againtibble::tribble(
+                                     ~X,          ~Location, ~Min, ~Max,
+                       "Partly cloudy.",         "Brisbane",   19,   29,
+                       "Partly cloudy.", "Brisbane Airport",   18,   27,
+                     "Possible shower.",       "Beaudesert",   15,   30,
+                       "Partly cloudy.",        "Chermside",   17,   29
+                     )
+
+
+write_csv(camille_datapasta, "camille_storing_things.csv")
+# want to create a readme file with metadata
+
+```
+
+###3c. Beautiful customized tables with 'gt'
+
+```{r}
+
+weather_data %>% 
+  gt() 
+
+weather_data %>% 
+  gt() %>% 
+  tab_header(
+    title = "Camille's Table",
+    subtitle = "Cool subtitle"
+  )
+
+weather_data %>% 
+  gt() %>% 
+  tab_header(
+    title = "Camille's Table",
+    subtitle = "Cool subtitle"
+  ) %>% 
+  fmt_number(
+    columns = vars(Min),
+    decimals = 2
+  ) %>% 
+  cols_move_to_start(
+    columns = vars(Location)
+  )
+
+#not the most concise code but most digestible and easy to customize
+
+weather_data %>% 
+  gt() %>% 
+  tab_header(
+    title = "Camille's Table",
+    subtitle = "Cool subtitle"
+  ) %>% 
+  fmt_number(
+    columns = vars(Min),
+    decimals = 2
+  ) %>% 
+  cols_move_to_start(
+    columns = vars(Location)
+  ) %>% 
+  data_color(
+    columns = vars(Min),
+    colors = scales::col_numeric(
+      palette = c(
+        "darkblue", "blue"
+      ), 
+      domain = c(14,20)
+    )
+  )
+
+#changes table into heat mat
+
+weather_data %>% 
+  gt() %>% 
+  tab_header(
+    title = "Camille's Table",
+    subtitle = "Cool subtitle"
+  ) %>% 
+  fmt_number(
+    columns = vars(Min),
+    decimals = 2
+  ) %>% 
+  cols_move_to_start(
+    columns = vars(Location)
+  ) %>% 
+  data_color(
+    columns = vars(Min),
+    colors = scales::col_numeric(
+      palette = c(
+        "darkblue", "blue"
+      ), 
+      domain = c(14,20)
+    )
+  ) %>% 
+  tab_options(
+    table.background.color = "purple", 
+    heading.background.color = "black",
+    column_labels.background.color = "gray"
+  )
+
+```
+
+###3d. Reading in directly from a url
+
+make sure you write it in with history of when you accessed it
+
+```{r}
+nuclear <- read_delim("https://www.nrc.gov/reading-rm/doc-collections/event-status/reactor-status/PowerReactorStatusForLast365Days.txt", delim = "|", col_names = TRUE)
+
+# Because you always want a version of what you were working with, I recommend writing that to a csv (or a text file, or whatever)
+
+# write_csv(nuclear, "nuclear.csv")
+
+```
+
+```{r}
+
+pesticides <- read_xls("PesticideResidues.xls")
+
+pest2 <- read_xls("PesticideResidues.xls", skip = 2, col_names = TRUE)
+
+pest <- pest2 %>% 
+  janitor::clean_names()
+
+### Do some wrangling:
+
+crops <- pest %>%
+  filter(commodity =="KALE", 
+         !is.na(grower_city)) %>% 
+  separate(grower_city, 
+           c("grow_city", "grow_state"), sep = ",") %>% 
+  separate(collection_site_city, 
+           c("market_city", "market_state", 
+             sep = ",")) %>% 
+  group_by(organic_commodity, grow_city, market_city) %>% 
+  tally()
+
+# Make a Sankey diagram!
+
+ggplot(crops, aes(y = n, axis1 = organic_commodity, axis2 = grow_city, axis3 = market_city)) +
+  geom_alluvium(aes(fill = organic_commodity, color = organic_commodity), show.legend = FALSE) +
+  geom_stratum() +
+  geom_text(stat = "stratum", label.strata = TRUE, size =2)
+beep(3)
+
+```
+
+Also packages and function to work with text files and googlesheets
+
